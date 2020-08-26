@@ -42,7 +42,7 @@ class Server:
 
 		pattern = r"(discord.com/gifts/|discordapp.com/gifts/|discord.gift/)[ ]*([a-zA-Z0-9]{16,24})"
 		for message_list in json_response["messages"]:
-			message = message_list[2]
+			message = next(m for m in message_list if m.get("hit"))
 			content = message["content"]
 			if re.search(pattern, content):
 				send_date = datetime.strptime(message["timestamp"], "%Y-%m-%dT%H:%M:%S.%f%z")

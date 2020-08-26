@@ -46,6 +46,7 @@ class Server:
 		self.id = guild.id
 		self.nitro_drops = []
 		self.score = -1
+		self.fake_count = 0
 
 	async def fetch_drops(self, session, account_token, current_time):
 		json_response = {}
@@ -60,7 +61,7 @@ class Server:
 
 			if json_response.get("message") == "You are being rate limited.":
 				rate_limit = json_response["retry_after"]
-				print("-> Being rate-limited. Please wait {}...".format(response), end="\r")
+				print("-> Being rate-limited. Please wait {}...".format(rate_limit), end="\r")
 				await asyncio.sleep(rate_limit)
 
 			if json_response.get("message") == "Index not yet available. Try again later":
@@ -68,13 +69,18 @@ class Server:
 				return
 
 		pattern = r"(discord.com/gifts/|discordapp.com/gifts/|discord.gift/)[ ]*([a-zA-Z0-9]{16,24})"
+		seen_codes = []
 		for message_list in json_response["messages"]:
 			message = next(m for m in message_list if m.get("hit"))
 			content = message["content"]
-			if re.search(pattern, content):
+			match = re.search(pattern, content)
+			if match and match.group(2) not in seen_codes:
 				send_date = datetime.strptime(message["timestamp"], "%Y-%m-%dT%H:%M:%S.%f%z")
 				seconds_since = timedelta.total_seconds(current_time - send_date)
 				self.nitro_drops.append(seconds_since)
+				seen_codes.append(match.group(2))
+			else:
+				self.fake_count += 1
 
 	def get_score(self):
 		if self.score != -1:
@@ -92,7 +98,7 @@ class Server:
 		return self.score
 
 	def __repr__(self):
-		return "({}) - {}".format(self.name, round(self.score, 2))
+		return "({}) - {} (Fakes: {})".format(self.name, round(self.score, 2), self.fake_count)
 
 
 def get_current_time():

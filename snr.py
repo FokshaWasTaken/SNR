@@ -21,13 +21,24 @@ class Server:
 		self.score = 0
 
 	async def fetch_drops(self, session, account_token, current_time):
-		search_query = "discord.gift"
-		base_api_url = "https://discordapp.com/api/v8/guilds/{}/messages/search?content={}&include_nsfw=true"
-		url = base_api_url.format(self.id, search_query)
-		headers = {"authorization": account_token}
+		json_response = {}
+		while json_response.get("messages") is None:
+			search_query = "discord.gift"
+			base_api_url = "https://discordapp.com/api/v8/guilds/{}/messages/search?content={}&include_nsfw=true"
+			url = base_api_url.format(self.id, search_query)
+			headers = {"authorization": account_token}
 
-		response = await session.get(url, headers=headers)
-		json_response = await response.json()
+			response = await session.get(url, headers=headers)
+			json_response = await response.json()
+
+			if json_response.get("message") == "You are being rate limited.":
+				rate_limit = json_response["retry_after"]
+				print("-> Being rate-limited. Please wait {}...".format(response), end="\r")
+				await asyncio.sleep(rate_limit)
+
+			if json_response.get("message") == "Index not yet available. Try again later":
+				print("-> Guild {} is unindexed. Skipping.".format(self.name), end="\r")
+				return
 
 		pattern = r"(discord.com/gifts/|discordapp.com/gifts/|discord.gift/)[ ]*([a-zA-Z0-9]{16,24})"
 		for message_list in json_response["messages"]:

@@ -10,21 +10,20 @@ class SNR(discord.Client):
 	def __init__(self, mode, *args, **kwargs):
 		self.mode = mode
 		self.session = None
+		self.time = get_current_time()
 		super().__init__(*args, **kwargs)
 
 	async def on_connect(self):
 		self.session = aiohttp.ClientSession()
-		account_token = self.http.token
-		current_time = get_current_time()
 
 		if self.mode == 1:
 			guilds = await self.fetch_guilds().flatten()
-			servers = await fetch_servers(guilds, account_token, self.session, current_time)
-			rank_servers(servers)
+			servers = await self.fetch_servers(guilds)
+			print_server_ranking(servers)
 			await self.close()
 		elif self.mode == 2:
 			guild = self.get_guild(int(input("Input the guild ID you want to scan: ")))
-			server = await fetch_server(guild, account_token, self.session, current_time)
+			server = await self.fetch_server(guild)
 			print(server)
 			await self.close()
 		elif self.mode == 3:
@@ -32,12 +31,31 @@ class SNR(discord.Client):
 
 	async def on_guild_join(self, guild):
 		if self.mode == 3:
-			server = await fetch_server(guild, self.http.token, self.session, get_current_time())
+			server = await self.fetch_server(guild)
 			print(server)
 
 	async def close(self):
 		await super().close()
 		await self.session.close()
+		return
+
+	async def fetch_servers(self, guilds):
+		servers = []
+		guild_amount = len(guilds)
+
+		for i in range(0, guild_amount):
+			print("-> Fetching guild {} out of {}.".format(i + 1, guild_amount), end="\r")
+			server = await self.fetch_server(guilds[i])
+			servers.append(server)
+			await asyncio.sleep(0.33)
+
+		return servers
+
+	async def fetch_server(self, guild):
+		server = Server(guild)
+		await server.fetch_drops(self.session, self.http.token, self.time)
+		server.get_score()
+		return server
 
 
 class Server:
@@ -142,27 +160,7 @@ def get_current_time():
 	return current_time.replace(tzinfo=timezone.utc)
 
 
-async def fetch_servers(guilds, account_token, session, current_time):
-	servers = []
-	guild_amount = len(guilds)
-
-	for i in range(0, guild_amount):
-		print("-> Fetching guild {} out of {}.".format(i+1, guild_amount), end="\r")
-		server = await fetch_server(guilds[i], account_token, session, current_time)
-		servers.append(server)
-		await asyncio.sleep(0.33)
-
-	return servers
-
-
-async def fetch_server(guild, account_token, session, current_time):
-	server = Server(guild)
-	await server.fetch_drops(session, account_token, current_time)
-	server.get_score()
-	return server
-
-
-def rank_servers(servers):
+def print_server_ranking(servers):
 	ranked = sorted(servers, key=Server.get_score, reverse=True)
 	for i in range(0, len(ranked)):
 		print("{} -> {}".format(i+1, ranked[i]))

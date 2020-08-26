@@ -3,6 +3,7 @@ import asyncio
 import aiohttp
 from datetime import datetime, timedelta, timezone
 import re
+import math
 
 
 class SNR(discord.Client):
@@ -68,17 +69,16 @@ class Server:
 				print("-> Guild {} is unindexed. Skipping.".format(self.name), end="\r")
 				return
 
-		pattern = r"(discord.com/gifts/|discordapp.com/gifts/|discord.gift/)[ ]*([a-zA-Z0-9]{16,24})"
+		pattern = r"(discord.com/gifts/|discordapp.com/gifts/|discord.gift/)[ ]*([a-zA-Z0-9]{16,24})([ ,.]|$)"
 		seen_codes = []
 		for message_list in json_response["messages"]:
 			message = next(m for m in message_list if m.get("hit"))
 			content = message["content"]
 			match = re.search(pattern, content)
 			if match and match.group(2) not in seen_codes:
-				send_date = datetime.strptime(message["timestamp"], "%Y-%m-%dT%H:%M:%S.%f%z")
-				seconds_since = timedelta.total_seconds(current_time - send_date)
-				self.nitro_drops.append(seconds_since)
-				seen_codes.append(match.group(2))
+				code = match.group(2)
+				self.nitro_drops.append(Drop(code, message["timestamp"], current_time))
+				seen_codes.append(code)
 			else:
 				self.fake_count += 1
 
@@ -89,16 +89,52 @@ class Server:
 		server_count = self.member_count
 		server_count_effect = (-(1 / (server_count / 15000 + 0.5) - 1.2) ** 2) / 1.44 + 1
 
-		drops = self.nitro_drops
-		nitro_effect = 0
-		for drop in drops:
-			nitro_effect += 2**(-drop/1209600)
+		nitro_effect = sum(drop.get_score() for drop in self.nitro_drops)
 
 		self.score = nitro_effect * server_count_effect
 		return self.score
 
 	def __repr__(self):
 		return "({}) - {} (Fakes: {})".format(self.name, round(self.score, 2), self.fake_count)
+
+
+class Drop:
+	def __init__(self, code, timestamp, current_time):
+		send_date = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z")
+		self.seconds_since = timedelta.total_seconds(current_time - send_date)
+		self.code = code
+
+	def get_score(self):
+		time_effect = 2**(-self.seconds_since/1209600)
+		probability_effect = self.get_code_legitimacy_probability()
+		return time_effect * probability_effect
+
+	def get_code_legitimacy_probability(self):
+		lower = upper = numeric = 0
+
+		for c in self.code:
+			if c.isnumeric():
+				numeric += 1
+			elif c.isupper():
+				upper += 1
+			else:
+				lower += 1
+
+		length = len(self.code)
+		percentage_lower = lower / length
+		percentage_upper = upper / length
+		percentage_numeric = numeric / length
+
+		chance_char = 26 / 62
+		chance_num = 10 / 62
+
+		error_lower = abs(chance_char - percentage_lower)
+		error_upper = abs(chance_char - percentage_upper)
+		error_numeric = abs(chance_num - percentage_numeric)
+
+		error_amount = error_lower + error_upper + error_numeric
+		error = 1 / (1 + math.exp(error_amount * 25 - 15))
+		return error
 
 
 def get_current_time():

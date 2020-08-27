@@ -27,12 +27,16 @@ class SNR(discord.Client):
 			print(server)
 			await self.close()
 		elif self.mode == 3:
-			print("Waiting for you to join a server...", end="\r")
+			print("React to any message in the server you want to scan!")
 
-	async def on_guild_join(self, guild):
+	async def on_raw_reaction_add(self, payload):
 		if self.mode == 3:
-			server = await self.fetch_server(guild)
-			print(server)
+			member = payload.member
+			guild_id = payload.guild_id
+			if member and guild_id:
+				if member.id == self.user.id:
+					guild = self.get_guild(guild_id)
+					print(await self.fetch_server(guild))
 
 	async def close(self):
 		await super().close()

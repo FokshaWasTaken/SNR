@@ -35,6 +35,7 @@ class SNR(discord.Client):
 			guild_id = payload.guild_id
 			if member and guild_id:
 				if member.id == self.user.id:
+					await asyncio.sleep(1)
 					guild = self.get_guild(guild_id)
 					print(await self.fetch_server(guild))
 

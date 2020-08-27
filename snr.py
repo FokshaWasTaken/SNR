@@ -45,7 +45,8 @@ class SNR(discord.Client):
 
 		for i in range(0, guild_amount):
 			print("-> Fetching guild {} out of {}.".format(i + 1, guild_amount), end="\r")
-			server = await self.fetch_server(guilds[i])
+			guild = self.get_guild(guilds[i].id)
+			server = await self.fetch_server(guild)
 			servers.append(server)
 			await asyncio.sleep(0.33)
 
@@ -60,7 +61,7 @@ class SNR(discord.Client):
 
 class Server:
 	def __init__(self, guild):
-		self.member_count = len(guild.members)
+		self.member_count = guild.member_count
 		self.name = guild.name
 		self.id = guild.id
 		self.nitro_drops = []

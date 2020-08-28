@@ -40,9 +40,9 @@ class SNR(discord.Client):
 					print(await self.fetch_server(guild))
 
 	async def close(self):
-		await super().close()
 		await self.session.close()
-		return
+		await super().close()
+		input("Press the enter key to exit...")
 
 	async def fetch_servers(self, guilds):
 		servers = []

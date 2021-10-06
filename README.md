@@ -1,3 +1,8 @@
+[![status: archive](https://github.com/GIScience/badges/raw/master/status/archive.svg)]()
+
+This project is currently ***discontinued***, we will continue providing help for the time being but there will be no work on it until further notice!
+
+
 # 📡 SNR
 
 Server Nitro Ranker, or just SNR, is an auxiliary tool for [RNS](https://github.com/Melonai/rust-nitro-sniper) that helps you get a better understanding of the Nitro sniping value of the Discord servers you're currently in.
